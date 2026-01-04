@@ -15,12 +15,30 @@ import time
 from datetime import datetime
 
 # 配置日志
+import logging.handlers
+
+# 确保log目录存在
+log_dir = os.path.join(os.path.dirname(__file__), 'log')
+os.makedirs(log_dir, exist_ok=True)
+log_file = os.path.join(log_dir, 'app.log')
+
+# 配置日志：同时输出到控制台和文件
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - [%(filename)s:%(lineno)d] - %(message)s',
-    datefmt='%Y-%m-%d %H:%M:%S'
+    datefmt='%Y-%m-%d %H:%M:%S',
+    handlers=[
+        logging.StreamHandler(),  # 控制台输出
+        logging.handlers.RotatingFileHandler(
+            log_file,
+            maxBytes=10*1024*1024,  # 10MB
+            backupCount=5,
+            encoding='utf-8'
+        )  # 文件输出
+    ]
 )
 logger = logging.getLogger(__name__)
+logger.info(f"日志文件: {log_file}")
 
 from app.api import stock, sector, market
 from app.core.config import settings

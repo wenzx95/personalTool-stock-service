@@ -35,21 +35,34 @@ class ThsCrawler:
     
     def ensure_driver(self):
         """确保驱动已初始化"""
+        logger.info("[ThsCrawler] ensure_driver: 检查驱动状态")
         if self.driver is None:
-            self._init_driver()
-            if self.driver is None:
-                # 如果初始化失败，记录警告但不抛出异常
-                logger.warning("Chrome驱动未初始化，无法抓取数据。返回空数据。")
+            logger.info("[ThsCrawler] ensure_driver: 驱动未初始化，开始初始化...")
+            try:
+                self._init_driver()
+                if self.driver is None:
+                    logger.warning("[ThsCrawler] ensure_driver: Chrome驱动初始化失败，返回False")
+                    return False
+                else:
+                    logger.info("[ThsCrawler] ensure_driver: Chrome驱动初始化成功")
+                    return True
+            except Exception as e:
+                logger.error(f"[ThsCrawler] ensure_driver: 初始化过程出现异常: {e}", exc_info=True)
                 return False
-        return True
+        else:
+            logger.info("[ThsCrawler] ensure_driver: 驱动已存在，直接返回True")
+            return True
     
     def _init_driver(self):
         """初始化浏览器驱动"""
+        logger.info("[ThsCrawler] _init_driver: 开始初始化Chrome驱动")
         if self.driver is not None:
-            # 如果已经初始化，直接返回
+            logger.info("[ThsCrawler] _init_driver: 驱动已存在，跳过初始化")
             return
         
+        init_start_time = time.time()
         try:
+            logger.info("[ThsCrawler] _init_driver: 步骤1 - 配置Chrome选项")
             options = Options()
             options.add_argument('--headless')  # 无头模式
             options.add_argument('--no-sandbox')
@@ -60,49 +73,89 @@ class ThsCrawler:
             options.add_argument('user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36')
             options.add_experimental_option("excludeSwitches", ["enable-automation"])
             options.add_experimental_option('useAutomationExtension', False)
+            logger.info("[ThsCrawler] _init_driver: Chrome选项配置完成")
+            
+            # 方法0: 尝试使用本地ChromeDriver文件（最快，如果已下载）
+            import os
+            project_root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+            local_driver_path = os.path.join(project_root, 'chromedriver.exe')
+            if os.path.exists(local_driver_path):
+                logger.info(f"[ThsCrawler] _init_driver: 方法0 - 尝试使用本地ChromeDriver: {local_driver_path}")
+                try:
+                    service = Service(local_driver_path)
+                    logger.info("[ThsCrawler] _init_driver: 正在使用本地ChromeDriver创建WebDriver实例...")
+                    self.driver = webdriver.Chrome(service=service, options=options)
+                    elapsed = time.time() - init_start_time
+                    logger.info(f"✅ [ThsCrawler] _init_driver: Chrome驱动初始化成功（使用本地文件），耗时 {elapsed:.3f}秒")
+                    return
+                except Exception as e0:
+                    elapsed = time.time() - init_start_time
+                    logger.warning(f"[ThsCrawler] _init_driver: 本地ChromeDriver失败（耗时 {elapsed:.3f}秒）: {e0}")
+            else:
+                logger.info(f"[ThsCrawler] _init_driver: 本地ChromeDriver文件不存在 ({local_driver_path})，跳过方法0")
             
             # 方法1: 尝试使用Selenium 4.6+的内置驱动管理（最简单）
+            logger.info("[ThsCrawler] _init_driver: 方法1 - 尝试使用Selenium内置驱动管理")
             try:
+                logger.info("[ThsCrawler] _init_driver: 正在创建Chrome WebDriver实例...")
                 self.driver = webdriver.Chrome(options=options)
-                logger.info("✅ Chrome驱动初始化成功（使用Selenium内置驱动管理）")
+                elapsed = time.time() - init_start_time
+                logger.info(f"✅ [ThsCrawler] _init_driver: Chrome驱动初始化成功（使用Selenium内置驱动管理），耗时 {elapsed:.3f}秒")
                 return
             except Exception as e1:
-                logger.debug(f"Selenium内置驱动管理失败: {e1}")
+                elapsed = time.time() - init_start_time
+                logger.warning(f"[ThsCrawler] _init_driver: Selenium内置驱动管理失败（耗时 {elapsed:.3f}秒）: {e1}")
             
             # 方法2: 尝试使用webdriver-manager
             if WEBDRIVER_MANAGER_AVAILABLE:
+                logger.info("[ThsCrawler] _init_driver: 方法2 - 尝试使用webdriver-manager")
                 try:
-                    # 清除缓存，重新下载
+                    logger.info("[ThsCrawler] _init_driver: 正在下载/安装ChromeDriver...")
                     from webdriver_manager.chrome import ChromeDriverManager
                     from webdriver_manager.core.os_manager import ChromeType
                     service = Service(ChromeDriverManager().install())
+                    logger.info("[ThsCrawler] _init_driver: ChromeDriver已安装，正在创建WebDriver实例...")
                     self.driver = webdriver.Chrome(service=service, options=options)
-                    logger.info("✅ Chrome驱动初始化成功（使用webdriver-manager）")
+                    elapsed = time.time() - init_start_time
+                    logger.info(f"✅ [ThsCrawler] _init_driver: Chrome驱动初始化成功（使用webdriver-manager），耗时 {elapsed:.3f}秒")
                     return
                 except Exception as e2:
-                    logger.warning(f"webdriver-manager初始化失败: {e2}")
+                    elapsed = time.time() - init_start_time
+                    logger.warning(f"[ThsCrawler] _init_driver: webdriver-manager初始化失败（耗时 {elapsed:.3f}秒）: {e2}")
                     # 尝试指定Chrome类型
                     try:
+                        logger.info("[ThsCrawler] _init_driver: 尝试指定Chrome类型...")
                         service = Service(ChromeDriverManager(chrome_type=ChromeType.GOOGLE).install())
                         self.driver = webdriver.Chrome(service=service, options=options)
-                        logger.info("✅ Chrome驱动初始化成功（使用webdriver-manager，指定Chrome类型）")
+                        elapsed = time.time() - init_start_time
+                        logger.info(f"✅ [ThsCrawler] _init_driver: Chrome驱动初始化成功（使用webdriver-manager，指定Chrome类型），耗时 {elapsed:.3f}秒")
                         return
                     except Exception as e3:
-                        logger.warning(f"webdriver-manager（指定类型）初始化失败: {e3}")
+                        elapsed = time.time() - init_start_time
+                        logger.warning(f"[ThsCrawler] _init_driver: webdriver-manager（指定类型）初始化失败（耗时 {elapsed:.3f}秒）: {e3}")
+            else:
+                logger.info("[ThsCrawler] _init_driver: webdriver-manager不可用，跳过方法2")
             
             # 方法3: 尝试使用系统PATH中的ChromeDriver
+            logger.info("[ThsCrawler] _init_driver: 方法3 - 尝试使用系统PATH中的ChromeDriver")
             try:
+                logger.info("[ThsCrawler] _init_driver: 正在从系统PATH创建Chrome WebDriver实例...")
                 self.driver = webdriver.Chrome(options=options)
-                logger.info("✅ Chrome驱动初始化成功（使用系统PATH）")
+                elapsed = time.time() - init_start_time
+                logger.info(f"✅ [ThsCrawler] _init_driver: Chrome驱动初始化成功（使用系统PATH），耗时 {elapsed:.3f}秒")
                 return
             except Exception as e4:
-                logger.warning(f"系统PATH中的ChromeDriver初始化失败: {e4}")
+                elapsed = time.time() - init_start_time
+                logger.warning(f"[ThsCrawler] _init_driver: 系统PATH中的ChromeDriver初始化失败（耗时 {elapsed:.3f}秒）: {e4}")
             
             # 所有方法都失败
+            elapsed = time.time() - init_start_time
+            logger.error(f"[ThsCrawler] _init_driver: 所有初始化方法都失败，总耗时 {elapsed:.3f}秒")
             raise Exception("所有Chrome驱动初始化方法都失败")
             
         except Exception as e:
-            logger.error(f"❌ Chrome驱动初始化失败: {e}")
+            elapsed = time.time() - init_start_time
+            logger.error(f"❌ [ThsCrawler] _init_driver: Chrome驱动初始化失败（总耗时 {elapsed:.3f}秒）: {e}")
             logger.error("=" * 60)
             logger.error("解决方案：")
             logger.error("1. 确保已安装Chrome浏览器")
@@ -194,12 +247,12 @@ class ThsCrawler:
                     if len(cols) < 5:
                         continue
                     
-                    # 解析板块数据（根据同花顺实际页面结构调整）
+                    # 解析板块数据（只保留表格核心字段）
                     sector_code = cols[0].get_text(strip=True) if len(cols) > 0 else ''
                     sector_name = cols[1].get_text(strip=True) if len(cols) > 1 else ''
                     change_pct = self._parse_number(cols[2].get_text(strip=True)) if len(cols) > 2 else 0.0
                     
-                    # 尝试解析更多字段
+                    # 核心字段：上涨/下跌家数、涨停/跌停家数
                     up_count = 0
                     down_count = 0
                     limit_up_count = 0
@@ -214,27 +267,8 @@ class ThsCrawler:
                     if len(cols) > 6:
                         limit_down_count = int(cols[6].get_text(strip=True) or 0)
                     
-                    # 尝试解析更多字段：换手率、成交量、成交额
-                    turnover_rate = 0.0
-                    volume = 0
-                    amount = 0
-                    
-                    # 根据同花顺表格结构，这些字段可能在后面的列
-                    if len(cols) > 7:
-                        turnover_rate = self._parse_number(cols[7].get_text(strip=True))
-                    if len(cols) > 8:
-                        volume_text = cols[8].get_text(strip=True)
-                        volume = int(self._parse_number(volume_text))
-                    if len(cols) > 9:
-                        amount_text = cols[9].get_text(strip=True)
-                        amount = int(self._parse_number(amount_text))
-                    
-                    # 计算总股票数（如果表格中没有，则用上涨+下跌家数）
+                    # 计算总股票数（上涨+下跌家数）
                     total_stocks = up_count + down_count
-                    if len(cols) > 10:
-                        total_text = cols[10].get_text(strip=True)
-                        if total_text:
-                            total_stocks = int(self._parse_number(total_text)) or total_stocks
                     
                     if sector_code and sector_name:
                         sectors.append({
@@ -245,10 +279,7 @@ class ThsCrawler:
                             'down_count': down_count,
                             'limit_up_count': limit_up_count,
                             'limit_down_count': limit_down_count,
-                            'total_stocks': total_stocks,
-                            'turnover_rate': turnover_rate,
-                            'volume': volume,
-                            'amount': amount
+                            'total_stocks': total_stocks
                         })
                         processed_count += 1
                         if processed_count % 10 == 0:

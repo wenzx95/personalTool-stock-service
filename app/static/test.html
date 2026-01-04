@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API测试工具 - PersonalTool Stock Service</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 14px;
+        }
+
+        .content {
+            padding: 30px;
+        }
+
+        .api-section {
+            margin-bottom: 30px;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .api-header {
+            background: #f5f5f5;
+            padding: 15px 20px;
+            border-bottom: 1px solid #e0e0e0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .api-header h3 {
+            color: #333;
+            font-size: 18px;
+        }
+
+        .method-badge {
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+            color: white;
+        }
+
+        .method-get {
+            background: #61affe;
+        }
+
+        .method-post {
+            background: #49cc90;
+        }
+
+        .api-body {
+            padding: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #555;
+            font-weight: 500;
+            font-size: 14px;
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: 500;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5568d3;
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+
+        .response-area {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 4px;
+            border: 1px solid #e0e0e0;
+        }
+
+        .response-area h4 {
+            margin-bottom: 10px;
+            color: #333;
+        }
+
+        .response-content {
+            background: #2d2d2d;
+            color: #f8f8f2;
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+            color: #667eea;
+        }
+
+        .loading.active {
+            display: block;
+        }
+
+        .quick-links {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .quick-link {
+            padding: 8px 16px;
+            background: #f0f0f0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            text-decoration: none;
+            color: #333;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        .quick-link:hover {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+
+        .status-success {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status-error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 API测试工具</h1>
+            <p>PersonalTool Stock Service - 直接在浏览器中测试API</p>
+        </div>
+
+        <div class="content">
+            <div class="quick-links">
+                <a href="/docs" class="quick-link" target="_blank">📚 Swagger文档</a>
+                <a href="/redoc" class="quick-link" target="_blank">📖 ReDoc文档</a>
+                <a href="/health" class="quick-link" target="_blank">❤️ 健康检查</a>
+            </div>
+
+            <!-- 健康检查 -->
+            <div class="api-section">
+                <div class="api-header">
+                    <h3>健康检查</h3>
+                    <span class="method-badge method-get">GET</span>
+                </div>
+                <div class="api-body">
+                    <div class="form-group">
+                        <label>端点</label>
+                        <input type="text" id="health-endpoint" value="/health" readonly>
+                    </div>
+                    <button class="btn btn-primary" onclick="testHealth()">发送请求</button>
+                    <div class="loading" id="health-loading">加载中...</div>
+                    <div class="response-area" id="health-response" style="display: none;">
+                        <h4>响应结果 <span class="status-badge" id="health-status"></span></h4>
+                        <pre class="response-content" id="health-content"></pre>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 板块列表 -->
+            <div class="api-section">
+                <div class="api-header">
+                    <h3>获取板块列表</h3>
+                    <span class="method-badge method-get">GET</span>
+                </div>
+                <div class="api-body">
+                    <div class="form-group">
+                        <label>端点</label>
+                        <input type="text" id="sector-list-endpoint" value="/api/sector/list" readonly>
+                    </div>
+                    <button class="btn btn-primary" onclick="testSectorList()">发送请求</button>
+                    <div class="loading" id="sector-list-loading">加载中...</div>
+                    <div class="response-area" id="sector-list-response" style="display: none;">
+                        <h4>响应结果 <span class="status-badge" id="sector-list-status"></span></h4>
+                        <pre class="response-content" id="sector-list-content"></pre>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 板块排名 -->
+            <div class="api-section">
+                <div class="api-header">
+                    <h3>获取板块排名</h3>
+                    <span class="method-badge method-get">GET</span>
+                </div>
+                <div class="api-body">
+                    <div class="form-group">
+                        <label>端点</label>
+                        <input type="text" id="sector-ranking-endpoint" value="/api/sector/ranking" readonly>
+                    </div>
+                    <div class="form-group">
+                        <label>排序字段 (order_by)</label>
+                        <select id="sector-ranking-order">
+                            <option value="change_pct">涨跌幅</option>
+                            <option value="volume">成交量</option>
+                            <option value="amount">成交额</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>数量限制 (limit)</label>
+                        <input type="number" id="sector-ranking-limit" value="10" min="1" max="100">
+                    </div>
+                    <button class="btn btn-primary" onclick="testSectorRanking()">发送请求</button>
+                    <div class="loading" id="sector-ranking-loading">加载中...</div>
+                    <div class="response-area" id="sector-ranking-response" style="display: none;">
+                        <h4>响应结果 <span class="status-badge" id="sector-ranking-status"></span></h4>
+                        <pre class="response-content" id="sector-ranking-content"></pre>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 板块详情 -->
+            <div class="api-section">
+                <div class="api-header">
+                    <h3>获取板块详情</h3>
+                    <span class="method-badge method-get">GET</span>
+                </div>
+                <div class="api-body">
+                    <div class="form-group">
+                        <label>板块代码 (code)</label>
+                        <input type="text" id="sector-detail-code" value="BK0473" placeholder="例如: BK0473">
+                    </div>
+                    <button class="btn btn-primary" onclick="testSectorDetail()">发送请求</button>
+                    <div class="loading" id="sector-detail-loading">加载中...</div>
+                    <div class="response-area" id="sector-detail-response" style="display: none;">
+                        <h4>响应结果 <span class="status-badge" id="sector-detail-status"></span></h4>
+                        <pre class="response-content" id="sector-detail-content"></pre>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 市场情绪 -->
+            <div class="api-section">
+                <div class="api-header">
+                    <h3>获取市场情绪</h3>
+                    <span class="method-badge method-get">GET</span>
+                </div>
+                <div class="api-body">
+                    <div class="form-group">
+                        <label>端点</label>
+                        <input type="text" id="market-emotion-endpoint" value="/api/market/emotion" readonly>
+                    </div>
+                    <button class="btn btn-primary" onclick="testMarketEmotion()">发送请求</button>
+                    <div class="loading" id="market-emotion-loading">加载中...</div>
+                    <div class="response-area" id="market-emotion-response" style="display: none;">
+                        <h4>响应结果 <span class="status-badge" id="market-emotion-status"></span></h4>
+                        <pre class="response-content" id="market-emotion-content"></pre>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 市场统计 -->
+            <div class="api-section">
+                <div class="api-header">
+                    <h3>获取市场统计</h3>
+                    <span class="method-badge method-get">GET</span>
+                </div>
+                <div class="api-body">
+                    <div class="form-group">
+                        <label>端点</label>
+                        <input type="text" id="market-statistics-endpoint" value="/api/market/statistics" readonly>
+                    </div>
+                    <button class="btn btn-primary" onclick="testMarketStatistics()">发送请求</button>
+                    <div class="loading" id="market-statistics-loading">加载中...</div>
+                    <div class="response-area" id="market-statistics-response" style="display: none;">
+                        <h4>响应结果 <span class="status-badge" id="market-statistics-status"></span></h4>
+                        <pre class="response-content" id="market-statistics-content"></pre>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 板块复盘表格 -->
+            <div class="api-section">
+                <div class="api-header">
+                    <h3>获取板块复盘表格数据 ⭐</h3>
+                    <span class="method-badge method-get">GET</span>
+                </div>
+                <div class="api-body">
+                    <div class="form-group">
+                        <label>端点</label>
+                        <input type="text" id="sector-review-table-endpoint" value="/api/sector/review-table" readonly>
+                    </div>
+                    <p style="color: #666; font-size: 13px; margin-bottom: 15px;">
+                        获取板块复盘表格所需的所有统计数据，包括涨跌幅、涨跌家数、涨停数、换手率、成交量、成交额等
+                    </p>
+                    <button class="btn btn-primary" onclick="testSectorReviewTable()">发送请求</button>
+                    <div class="loading" id="sector-review-table-loading">加载中...</div>
+                    <div class="response-area" id="sector-review-table-response" style="display: none;">
+                        <h4>响应结果 <span class="status-badge" id="sector-review-table-status"></span></h4>
+                        <pre class="response-content" id="sector-review-table-content"></pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = window.location.origin;
+
+        async function makeRequest(endpoint, params = {}) {
+            let url = API_BASE + endpoint;
+            if (Object.keys(params).length > 0) {
+                const queryString = new URLSearchParams(params).toString();
+                url += '?' + queryString;
+            }
+
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+                return {
+                    status: response.status,
+                    success: response.ok,
+                    data: data
+                };
+            } catch (error) {
+                return {
+                    status: 0,
+                    success: false,
+                    error: error.message
+                };
+            }
+        }
+
+        function showResponse(id, result) {
+            const loadingEl = document.getElementById(id + '-loading');
+            const responseEl = document.getElementById(id + '-response');
+            const contentEl = document.getElementById(id + '-content');
+            const statusEl = document.getElementById(id + '-status');
+
+            loadingEl.classList.remove('active');
+            responseEl.style.display = 'block';
+
+            if (result.success) {
+                statusEl.textContent = '成功 ' + result.status;
+                statusEl.className = 'status-badge status-success';
+                contentEl.textContent = JSON.stringify(result.data, null, 2);
+            } else {
+                statusEl.textContent = '错误 ' + (result.status || '网络错误');
+                statusEl.className = 'status-badge status-error';
+                contentEl.textContent = result.error || JSON.stringify(result.data, null, 2);
+            }
+        }
+
+        async function testHealth() {
+            const loadingEl = document.getElementById('health-loading');
+            loadingEl.classList.add('active');
+            const result = await makeRequest('/health');
+            showResponse('health', result);
+        }
+
+        async function testSectorList() {
+            const loadingEl = document.getElementById('sector-list-loading');
+            loadingEl.classList.add('active');
+            const result = await makeRequest('/api/sector/list');
+            showResponse('sector-list', result);
+        }
+
+        async function testSectorRanking() {
+            const loadingEl = document.getElementById('sector-ranking-loading');
+            const orderBy = document.getElementById('sector-ranking-order').value;
+            const limit = document.getElementById('sector-ranking-limit').value;
+            loadingEl.classList.add('active');
+            const result = await makeRequest('/api/sector/ranking', { order_by: orderBy, limit: limit });
+            showResponse('sector-ranking', result);
+        }
+
+        async function testSectorDetail() {
+            const loadingEl = document.getElementById('sector-detail-loading');
+            const code = document.getElementById('sector-detail-code').value;
+            if (!code) {
+                alert('请输入板块代码');
+                return;
+            }
+            loadingEl.classList.add('active');
+            const result = await makeRequest(`/api/sector/${code}/detail`);
+            showResponse('sector-detail', result);
+        }
+
+        async function testMarketEmotion() {
+            const loadingEl = document.getElementById('market-emotion-loading');
+            loadingEl.classList.add('active');
+            const result = await makeRequest('/api/market/emotion');
+            showResponse('market-emotion', result);
+        }
+
+        async function testMarketStatistics() {
+            const loadingEl = document.getElementById('market-statistics-loading');
+            loadingEl.classList.add('active');
+            const result = await makeRequest('/api/market/statistics');
+            showResponse('market-statistics', result);
+        }
+
+        async function testSectorReviewTable() {
+            const loadingEl = document.getElementById('sector-review-table-loading');
+            loadingEl.classList.add('active');
+            const result = await makeRequest('/api/sector/review-table');
+            
+            // 调试：检查返回的数据结构
+            if (result.success && result.data) {
+                const data = result.data.data || result.data;
+                const table = data.table || [];
+                const total = data.total || 0;
+                const columns = data.columns || [];
+                
+                console.log('调试信息:');
+                console.log('  - table长度:', table.length);
+                console.log('  - total:', total);
+                console.log('  - columns数量:', columns.length);
+                if (table.length > 0) {
+                    console.log('  - 第一条数据:', table[0]);
+                } else {
+                    console.warn('  - ⚠️ table数据为空！');
+                }
+            }
+            
+            showResponse('sector-review-table', result);
+        }
+
+        // 页面加载时自动测试健康检查
+        window.addEventListener('load', () => {
+            testHealth();
+        });
+    </script>
+</body>
+</html>
+

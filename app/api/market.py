@@ -37,3 +37,4 @@ async def get_market_statistics():
         logger.error(f"获取市场统计失败: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+
