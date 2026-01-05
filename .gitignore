@@ -36,9 +36,17 @@ wheels/
 # 日志
 *.log
 logs/
+log/
 
 # 数据
 data/
 *.db
 *.sqlite
+
+# Chrome驱动和调试文件
+chromedriver
+chromedriver.exe
+drivers/
+debug/
+*.html
 

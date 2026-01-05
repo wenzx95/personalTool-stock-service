@@ -77,11 +77,22 @@ class ThsCrawler:
             
             # 方法0: 尝试使用本地ChromeDriver文件（最快，如果已下载）
             import os
+            import platform
             project_root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
-            local_driver_path = os.path.join(project_root, 'chromedriver.exe')
+            
+            # 根据操作系统选择驱动文件名
+            if platform.system() == 'Windows':
+                driver_filename = 'chromedriver.exe'
+            else:
+                driver_filename = 'chromedriver'
+            
+            local_driver_path = os.path.join(project_root, driver_filename)
             if os.path.exists(local_driver_path):
                 logger.info(f"[ThsCrawler] _init_driver: 方法0 - 尝试使用本地ChromeDriver: {local_driver_path}")
                 try:
+                    # 确保文件有执行权限（macOS/Linux）
+                    if platform.system() != 'Windows':
+                        os.chmod(local_driver_path, 0o755)
                     service = Service(local_driver_path)
                     logger.info("[ThsCrawler] _init_driver: 正在使用本地ChromeDriver创建WebDriver实例...")
                     self.driver = webdriver.Chrome(service=service, options=options)
@@ -91,6 +102,7 @@ class ThsCrawler:
                 except Exception as e0:
                     elapsed = time.time() - init_start_time
                     logger.warning(f"[ThsCrawler] _init_driver: 本地ChromeDriver失败（耗时 {elapsed:.3f}秒）: {e0}")
+                    logger.warning(f"[ThsCrawler] _init_driver: 错误详情: {type(e0).__name__}: {str(e0)}")
             else:
                 logger.info(f"[ThsCrawler] _init_driver: 本地ChromeDriver文件不存在 ({local_driver_path})，跳过方法0")
             
@@ -113,8 +125,24 @@ class ThsCrawler:
                     logger.info("[ThsCrawler] _init_driver: 正在下载/安装ChromeDriver...")
                     from webdriver_manager.chrome import ChromeDriverManager
                     from webdriver_manager.core.os_manager import ChromeType
-                    service = Service(ChromeDriverManager().install())
-                    logger.info("[ThsCrawler] _init_driver: ChromeDriver已安装，正在创建WebDriver实例...")
+                    import os
+                    
+                    # 配置代理（如果设置了）
+                    proxy_url = getattr(settings, 'PROXY_URL', None)
+                    if proxy_url:
+                        logger.info(f"[ThsCrawler] _init_driver: 使用代理服务器: {proxy_url}")
+                        os.environ['HTTP_PROXY'] = proxy_url
+                        os.environ['HTTPS_PROXY'] = proxy_url
+                        os.environ['http_proxy'] = proxy_url
+                        os.environ['https_proxy'] = proxy_url
+                    
+                    # 创建ChromeDriverManager实例并安装
+                    driver_manager = ChromeDriverManager()
+                    driver_path = driver_manager.install()
+                    logger.info(f"[ThsCrawler] _init_driver: ChromeDriver已安装，路径: {driver_path}")
+                    
+                    service = Service(driver_path)
+                    logger.info("[ThsCrawler] _init_driver: 正在创建WebDriver实例...")
                     self.driver = webdriver.Chrome(service=service, options=options)
                     elapsed = time.time() - init_start_time
                     logger.info(f"✅ [ThsCrawler] _init_driver: Chrome驱动初始化成功（使用webdriver-manager），耗时 {elapsed:.3f}秒")
@@ -122,10 +150,14 @@ class ThsCrawler:
                 except Exception as e2:
                     elapsed = time.time() - init_start_time
                     logger.warning(f"[ThsCrawler] _init_driver: webdriver-manager初始化失败（耗时 {elapsed:.3f}秒）: {e2}")
+                    logger.warning(f"[ThsCrawler] _init_driver: 错误详情: {type(e2).__name__}: {str(e2)}")
                     # 尝试指定Chrome类型
                     try:
                         logger.info("[ThsCrawler] _init_driver: 尝试指定Chrome类型...")
-                        service = Service(ChromeDriverManager(chrome_type=ChromeType.GOOGLE).install())
+                        driver_manager = ChromeDriverManager(chrome_type=ChromeType.GOOGLE)
+                        driver_path = driver_manager.install()
+                        logger.info(f"[ThsCrawler] _init_driver: ChromeDriver已安装（指定类型），路径: {driver_path}")
+                        service = Service(driver_path)
                         self.driver = webdriver.Chrome(service=service, options=options)
                         elapsed = time.time() - init_start_time
                         logger.info(f"✅ [ThsCrawler] _init_driver: Chrome驱动初始化成功（使用webdriver-manager，指定Chrome类型），耗时 {elapsed:.3f}秒")
@@ -133,6 +165,7 @@ class ThsCrawler:
                     except Exception as e3:
                         elapsed = time.time() - init_start_time
                         logger.warning(f"[ThsCrawler] _init_driver: webdriver-manager（指定类型）初始化失败（耗时 {elapsed:.3f}秒）: {e3}")
+                        logger.warning(f"[ThsCrawler] _init_driver: 错误详情: {type(e3).__name__}: {str(e3)}")
             else:
                 logger.info("[ThsCrawler] _init_driver: webdriver-manager不可用，跳过方法2")
             
@@ -226,25 +259,67 @@ class ThsCrawler:
             logger.info("[ThsCrawler] 步骤3完成: 表格元素已找到")
             
             logger.info("[ThsCrawler] 步骤4: 解析HTML页面")
+            # 等待更长时间，确保数据加载完成
+            logger.info("[ThsCrawler] 额外等待3秒，确保表格数据完全加载...")
+            self._random_delay(3, 4)
+            
             # 解析HTML
             soup = BeautifulSoup(self.driver.page_source, 'html.parser')
             sectors = []
             
+            # 调试：保存页面HTML到文件（仅用于调试）
+            import os
+            debug_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'debug')
+            os.makedirs(debug_dir, exist_ok=True)
+            debug_file = os.path.join(debug_dir, 'page_source.html')
+            with open(debug_file, 'w', encoding='utf-8') as f:
+                f.write(self.driver.page_source)
+            logger.info(f"[ThsCrawler] 调试: 页面HTML已保存到 {debug_file}")
+            
             logger.info("[ThsCrawler] 步骤5: 查找表格元素")
-            # 查找表格
-            table = soup.find('table') or soup.find(class_=re.compile('table', re.I))
+            # 尝试多种方式查找表格
+            table = None
+            # 方法1: 查找标准table标签
+            tables = soup.find_all('table')
+            logger.info(f"[ThsCrawler] 调试: 找到 {len(tables)} 个table标签")
+            if tables:
+                # 选择最大的table（通常是数据表格）
+                table = max(tables, key=lambda t: len(t.find_all('tr')))
+                logger.info(f"[ThsCrawler] 调试: 选择最大的table，包含 {len(table.find_all('tr'))} 行")
+            
+            # 方法2: 如果没找到，尝试通过class查找
+            if not table:
+                table = soup.find(class_=re.compile('table|m-table|data-table', re.I))
+                if table:
+                    logger.info("[ThsCrawler] 调试: 通过class找到表格")
+            
+            # 方法3: 尝试查找tbody
+            if not table:
+                tbody = soup.find('tbody')
+                if tbody:
+                    table = tbody.parent if tbody.parent else tbody
+                    logger.info("[ThsCrawler] 调试: 通过tbody找到表格")
+            
             if not table:
                 logger.warning("[ThsCrawler] 未找到板块表格，返回空列表")
+                logger.warning(f"[ThsCrawler] 调试: 页面标题: {soup.title.string if soup.title else 'N/A'}")
                 return []
+            
             logger.info("[ThsCrawler] 步骤5完成: 表格已找到")
             
-            rows = table.find_all('tr')[1:]  # 跳过表头
+            # 查找所有行
+            all_rows = table.find_all('tr')
+            logger.info(f"[ThsCrawler] 调试: 表格总行数: {len(all_rows)}")
+            if len(all_rows) > 0:
+                logger.info(f"[ThsCrawler] 调试: 第一行内容示例: {all_rows[0].get_text(strip=True)[:100]}")
+            
+            rows = all_rows[1:] if len(all_rows) > 1 else all_rows  # 跳过表头（如果有）
             logger.info(f"[ThsCrawler] 步骤6: 开始解析表格，共 {len(rows)} 行数据")
             processed_count = 0
             for row_idx, row in enumerate(rows, 1):
                 try:
                     cols = row.find_all(['td', 'th'])
-                    if len(cols) < 5:
+                    if len(cols) < 3:  # 至少需要3列：代码、名称、涨跌幅
                         continue
                     
                     # 解析板块数据（只保留表格核心字段）
@@ -253,19 +328,21 @@ class ThsCrawler:
                     change_pct = self._parse_number(cols[2].get_text(strip=True)) if len(cols) > 2 else 0.0
                     
                     # 核心字段：上涨/下跌家数、涨停/跌停家数
-                    up_count = 0
-                    down_count = 0
-                    limit_up_count = 0
-                    limit_down_count = 0
+                    # 使用更灵活的解析方式，支持整数和浮点数
+                    def safe_int(text, default=0):
+                        """安全地将文本转换为整数"""
+                        if not text or text == '-':
+                            return default
+                        try:
+                            # 先尝试转换为浮点数，再转为整数（处理"1277.75"这种情况）
+                            return int(float(text.strip().replace(',', '')))
+                        except (ValueError, AttributeError):
+                            return default
                     
-                    if len(cols) > 3:
-                        up_count = int(cols[3].get_text(strip=True) or 0)
-                    if len(cols) > 4:
-                        down_count = int(cols[4].get_text(strip=True) or 0)
-                    if len(cols) > 5:
-                        limit_up_count = int(cols[5].get_text(strip=True) or 0)
-                    if len(cols) > 6:
-                        limit_down_count = int(cols[6].get_text(strip=True) or 0)
+                    up_count = safe_int(cols[3].get_text(strip=True)) if len(cols) > 3 else 0
+                    down_count = safe_int(cols[4].get_text(strip=True)) if len(cols) > 4 else 0
+                    limit_up_count = safe_int(cols[5].get_text(strip=True)) if len(cols) > 5 else 0
+                    limit_down_count = safe_int(cols[6].get_text(strip=True)) if len(cols) > 6 else 0
                     
                     # 计算总股票数（上涨+下跌家数）
                     total_stocks = up_count + down_count

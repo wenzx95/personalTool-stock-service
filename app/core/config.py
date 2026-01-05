@@ -1,5 +1,6 @@
 """应用配置"""
 from pydantic_settings import BaseSettings
+from typing import Optional
 
 
 class Settings(BaseSettings):
@@ -17,6 +18,9 @@ class Settings(BaseSettings):
     # 数据抓取配置
     CRAWL_DELAY: float = 2.0  # 抓取延迟（秒）
     REQUEST_TIMEOUT: int = 30  # 请求超时（秒）
+    
+    # 代理配置
+    PROXY_URL: Optional[str] = "http://127.0.0.1:7890"  # 代理服务器地址
     
     # 定时任务配置
     SCHEDULE_ENABLED: bool = True
