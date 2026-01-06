@@ -1,0 +1,51 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+
+# Virtual Environment
+.venv/
+venv/
+ENV/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+log/
+
+# Database (will be mounted as volume)
+data/*.db
+data/*.db-journal
+
+# Test files
+*_test.py
+test_*.py
+
+# Temporary files
+*.tmp
+*.bak
+*.swp
+analyze_emotion_*.py
+check_*.py
+read_*.py
+test_*.py
+
+# Documentation (not needed in container)
+*.md
+docs/
