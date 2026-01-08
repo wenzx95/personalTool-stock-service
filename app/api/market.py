@@ -57,12 +57,13 @@ async def get_market_statistics():
 
 
 @router.get("/review")
-async def get_market_review(trade_date: Optional[str] = None):
+async def get_market_review(trade_date: Optional[str] = None, session_id: Optional[str] = None):
     """
     获取市场复盘数据（实时获取，不保存）
 
     参数:
         trade_date: 交易日期，格式：YYYYMMDD，默认为今天
+        session_id: 会话ID，用于SSE实时日志推送
         例如：20250105
 
     返回:
@@ -85,8 +86,10 @@ async def get_market_review(trade_date: Optional[str] = None):
         - total_stocks: 总家数
     """
     try:
-        logger.info(f"[API] 开始获取市场复盘数据，日期: {trade_date}")
-        review_data = market_review_service.get_market_review_data(trade_date)
+        logger.info(f"[API] 开始获取市场复盘数据，日期: {trade_date}, 会话ID: {session_id}")
+        # 使用新的MarketReviewService实例，传递session_id
+        market_review_service_instance = MarketReviewService(session_id=session_id)
+        review_data = market_review_service_instance.get_market_review_data(trade_date)
         return {
             "code": 200,
             "message": "success",
@@ -135,7 +138,7 @@ async def get_review_detail(date: str):
 
 
 @router.post("/review/create")
-async def create_review(request: ReviewCreateRequest):
+async def create_review(request: ReviewCreateRequest, session_id: Optional[str] = None):
     """
     创建复盘记录（自动获取当日市场数据）
 
@@ -143,16 +146,20 @@ async def create_review(request: ReviewCreateRequest):
         - date: 日期（YYYY-MM-DD格式）
         - hot_sectors: 热门板块列表
         - notes: 复盘笔记
+
+    查询参数:
+        - session_id: 会话ID，用于SSE实时日志推送
     """
     try:
         # 先获取当日市场数据
         # 将YYYY-MM-DD转换为YYYYMMDD
         trade_date = request.date.replace('-', '')
 
-        logger.info(f"[API] 开始创建复盘记录，日期: {trade_date}")
+        logger.info(f"[API] 开始创建复盘记录，日期: {trade_date}, 会话ID: {session_id}")
 
-        # 获取市场数据
-        market_data = market_review_service.get_market_review_data(trade_date)
+        # 获取市场数据（使用新的MarketReviewService实例，传递session_id）
+        market_review_service_instance = MarketReviewService(session_id=session_id)
+        market_data = market_review_service_instance.get_market_review_data(trade_date)
 
         # 合并请求数据
         market_data['hot_sectors'] = request.hot_sectors

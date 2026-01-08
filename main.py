@@ -40,7 +40,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 logger.info(f"日志文件: {log_file}")
 
-from app.api import stock, sector, market
+from app.api import stock, sector, market, sse
 from app.core.config import settings
 from app.scheduler import scheduler
 
@@ -105,6 +105,7 @@ async def log_requests(request: Request, call_next):
 app.include_router(stock.router, prefix="/api/stock", tags=["个股"])
 app.include_router(sector.router, prefix="/api/sector", tags=["板块"])
 app.include_router(market.router, prefix="/api/market", tags=["市场"])
+app.include_router(sse.router, prefix="/api/sse", tags=["SSE"])
 
 logger.info("=" * 60)
 logger.info("PersonalTool Stock Service 启动中...")
